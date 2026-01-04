@@ -3,6 +3,7 @@
 import gc
 import time
 import torch
+import subprocess
 import torch._dynamo.config
 import torch._inductor.config
 
@@ -214,6 +215,16 @@ def train():
     # Finish wandb
     if wandb_enabled:
         finish_wandb()
+    
+    # Terminate RunPod instance
+    pod_id = os.environ.get("RUNPOD_POD_ID")
+    if pod_id:
+        print("=" * 60)
+        print(f"Terminating RunPod instance: {pod_id}")
+        print("=" * 60)
+        subprocess.run(["runpodctl", "remove", "pod", pod_id])
+    else:
+        print("⚠ RUNPOD_POD_ID not set, skipping instance termination")
 
 
 if __name__ == "__main__":
