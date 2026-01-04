@@ -61,14 +61,17 @@ def get_batch(
     data = np.memmap(f"{data_dir}/{split}.bin", dtype=np.uint16, mode="r")
     ix = torch.randint(len(data) - block_size, (batch_size,))
     x = torch.stack([
-        torch.from_numpy(data[i:i + block_size].astype(np.int64)) 
+        torch.from_numpy(data[i:i + block_size].astype(np.int64)).pin_memory()
         for i in ix
     ])
     y = torch.stack([
-        torch.from_numpy(data[i + 1:i + 1 + block_size].astype(np.int64)) 
+        torch.from_numpy(data[i + 1:i + 1 + block_size].astype(np.int64)).pin_memory()
         for i in ix
     ])
-    return x.to(device), y.to(device)
+    return (
+        x.to(device, non_blocking=True),
+        y.to(device, non_blocking=True)
+    )
 
 
 class DataLoader:

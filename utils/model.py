@@ -26,6 +26,7 @@ class ModelArgs:
     norm_eps: float = 1e-5
     max_seq_len: int = 2048
     dropout: float = 0.0
+    use_checkpointing: bool = False
 
 
 class RMSNorm(nn.Module):
@@ -60,6 +61,10 @@ class CausalSelfAttention(nn.Module):
         q, k = apply_rotary_emb(q, k, freqs_cos, freqs_sin)
 
         if HAS_FLASH_ATTN:
+            if self.n_kv_heads != self.n_heads:
+                repeat = self.n_heads // self.n_kv_heads
+                k = k.repeat_interleave(repeat, dim=2)
+                v = v.repeat_interleave(repeat, dim=2)
             out = flash_attn_func(q, k, v, causal=True)
         else:
             # Fallback to standard attention
@@ -154,7 +159,10 @@ class Llama(nn.Module):
         freqs_sin = self.freqs_sin[:T].unsqueeze(0).unsqueeze(2)
 
         for chunk in self.layer_chunks:
-            h = checkpoint(chunk, h, freqs_cos, freqs_sin, use_reentrant=False)
+            if self.args.use_checkpointing:
+                h = checkpoint(chunk, h, freqs_cos, freqs_sin, use_reentrant=False)
+            else:
+                h = chunk(h, freqs_cos, freqs_sin)
 
         h = self.norm(h)
         logits = self.lm_head(h)

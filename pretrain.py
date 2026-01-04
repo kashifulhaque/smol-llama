@@ -27,9 +27,9 @@ from utils import (
 @dataclass
 class TrainArgs:
     data_dir: str = "data_bin"
-    batch_size: int = 16
+    batch_size: int = 64
     block_size: int = 2048
-    grad_accum: int = 32
+    grad_accum: int = 8
     lr: float = 3e-4
     max_iters: int = 5725
     warmup_iters: int = 900
@@ -89,7 +89,9 @@ def train():
     try:
         torch._dynamo.config.suppress_errors = True
         torch._inductor.config.triton.cudagraphs = False
-        model = torch.compile(model, mode="default")
+        torch._inductor.config.coordinate_descent_tuning = True
+        torch._inductor.config.triton.unique_kernel_names = True
+        model = torch.compile(model, mode="max-autotune", fullgraph=True)
         print("✓ Model compilation enabled!")
     except Exception as e:
         print(f"⚠ Compilation failed: {e}")
