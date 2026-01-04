@@ -27,9 +27,9 @@ from utils import (
 @dataclass
 class TrainArgs:
     data_dir: str = "data_bin"
-    batch_size: int = 64
+    batch_size: int = 128
     block_size: int = 2048
-    grad_accum: int = 8
+    grad_accum: int = 4
     lr: float = 3e-4
     max_iters: int = 5725
     warmup_iters: int = 900
