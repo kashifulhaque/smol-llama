@@ -60,19 +60,21 @@ class CausalSelfAttention(nn.Module):
 
         q, k = apply_rotary_emb(q, k, freqs_cos, freqs_sin)
 
-        if HAS_FLASH_ATTN:
+        use_flash = HAS_FLASH_ATTN and not torch._dynamo.is_compiling()
+
+        if use_flash:
             if self.n_kv_heads != self.n_heads:
                 repeat = self.n_heads // self.n_kv_heads
-                k = k.repeat_interleave(repeat, dim=2)
-                v = v.repeat_interleave(repeat, dim=2)
+                k = k.repeat_interleave(repeat, dim=2).contiguous()
+                v = v.repeat_interleave(repeat, dim=2).contiguous()
+
             out = flash_attn_func(q, k, v, causal=True)
         else:
-            # Fallback to standard attention
-            q = q.transpose(1, 2)  # (B, n_heads, T, head_dim)
+            q = q.transpose(1, 2)
             k = k.transpose(1, 2)
             v = v.transpose(1, 2)
             out = F.scaled_dot_product_attention(q, k, v, is_causal=True)
-            out = out.transpose(1, 2)  # (B, T, n_heads, head_dim)
+            out = out.transpose(1, 2)
         
         out = out.reshape(B, T, -1)
         return self.wo(out)
