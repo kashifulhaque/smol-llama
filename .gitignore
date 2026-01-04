@@ -12,3 +12,4 @@ wheels/
 .env
 data_bin/
 wandb/
+*.pt
