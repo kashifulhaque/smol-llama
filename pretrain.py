@@ -218,7 +218,7 @@ def train():
                     log_metrics({"train/loss": loss_accum}, step=step)
         
         # Eval
-        if steps % args.checkpoint_interval == 0:
+        if step % args.checkpoint_interval == 0:
             val_loss, val_pplx = evaluate(model, args)
             print(f"val_loss: {val_loss:.4f} | val_pplx: {val_pplx:.2f}")
 
