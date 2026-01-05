@@ -40,6 +40,22 @@ class TrainArgs:
     wandb_project: str = "smol-llama"
     log_interval: int = 1           # Log to wandb every 'n' steps
 
+def evaluate(model, args):
+    model.eval()
+    total_loss = 0.0
+    num_batches = 20
+
+    with torch.no_grad():
+        for _ in range(num_batches):
+            X, Y = get_batch("val", args.data_dir, args.batch_size, args.block_size, args.device)
+            _, loss = model(X, Y)
+            total_loss += loss.item()
+    
+    avg_loss = total_loss / num_batches
+    perplexity = torch.exp(torch.tensor(avg_loss)).item()
+
+    model.train()
+    return avg_loss, perplexity
 
 def train():
     args = TrainArgs()
@@ -200,6 +216,17 @@ def train():
                 print(f"step {step:5d} | loss {loss_accum:.4f} | (warming up...)")
                 if wandb_enabled:
                     log_metrics({"train/loss": loss_accum}, step=step)
+        
+        # Eval
+        if steps % args.checkpoint_interval == 0:
+            val_loss, val_pplx = evaluate(model, args)
+            print(f"val_loss: {val_loss:.4f} | val_pplx: {val_pplx:.2f}")
+
+            if wandb_enabled:
+                log_metrics({
+                    "val/loss": val_loss,
+                    "val/pplx": val_pplx
+                }, step=step)
 
         # Save checkpoint
         if step % args.checkpoint_interval == 0 and step > 0:
